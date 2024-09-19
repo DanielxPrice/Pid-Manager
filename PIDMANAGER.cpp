@@ -6,15 +6,46 @@
 #include <unistd.h>
 #include <vector>
 #include <algorithm>
+#include <string.h>
 
 #define MIN_PID 100
 #define MAX_PID 1000
+#define BUFFER_SIZE 25
+#define READ_END 0
+#define WRITE_END 1
+
+
 #include "PIDCLASS.h"
 
 using namespace std;
 
 int main() 
 {
+    /***********************************************************************/
+    // Section added:
+    char write_msg[BUFFER_SIZE] = "Greetings";
+
+    char read_msg[BUFFER_SIZE];
+
+    int parentToChild[2];
+    int childToParent[2];
+
+    
+
+    /* create the pipe */
+
+    if (pipe(parentToChild) == -1 || pipe(childToParent) == -1) 
+    {
+    
+        fprintf(stderr,"Pipe failed");
+        return 1;
+    }
+
+
+
+    /***********************************************************************/
+
+
     vector<int> parentPids;
     vector<int> childPids;
 
