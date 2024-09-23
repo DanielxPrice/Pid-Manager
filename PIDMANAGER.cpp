@@ -22,8 +22,10 @@ using namespace std;
 int main() 
 {
     /***********************************************************************/
-    // Section added:
-    char write_msg[BUFFER_SIZE] = "Greetings";
+    // Pipe Set up
+    char pid_msg[BUFFER_SIZE] = "Need PID";
+    char deallocate_pid[BUFFER_SIZE] = "Deallocate PID";
+    char done_msg[BUFFER_SIZE] = "Done";
 
     char read_msg[BUFFER_SIZE];
 
@@ -47,7 +49,7 @@ int main()
 
 
     vector<int> parentPids;
-    vector<int> childPids;
+    //vector<int> childPids;
 
     pid_t pid;
     pid = fork();
@@ -60,85 +62,74 @@ int main()
     //CHILD PROCESS
     else if (pid == 0)
     {
-        PidManager childPidManager;
-        //childPidManager.allocate_map();
-        cout << "\nAllocating and Releasing one by one";
-        cout << "\nChild Pids:\n";
-        // Now have it do stuff like allocate some pids and release them
+        close(parentToChild[WRITE_END]);
+        close(childToParent[READ_END]);
+
         for (int i = 0; i < 3; ++i)
         {
-            int otherPid = childPidManager.allocate_pid();
-            if (otherPid != -1)
-            {
-                childPids.push_back(otherPid);
-                sleep(1);
-                childPidManager.release_pid(otherPid);
+            // Writing to request PID from parent
+            write(childToParent[WRITE_END], pid_msg, strlen(pid_msg)+1);
+            sleep(4);
 
-                // chck to see if the released PID becomes available for allocation again
-                childPidManager.release_pid(otherPid);
-            }
+            read(parentToChild[READ_END], read_msg, BUFFER_SIZE);
+            cout << "Hello from child, received PID: " << read_msg << endl;
+
+            write(childToParent[WRITE_END], deallocate_pid, strlen(deallocate_pid)+1);
+            sleep(4);
         }
+        write(childToParent[WRITE_END], done_msg, strlen(done_msg) + 1);
 
-        //Testing Area
-        // cout << "childPids Vector";
-        // for (int element : childPids)
-        // {
-        //     cout << element << " ";
-        // }
+        close(parentToChild[READ_END]);
+        close(childToParent[WRITE_END]);
     }
     //PARENT PROCESS
     else 
     {
-        wait(NULL);
+        //wait(NULL);
         PidManager parentPidManager;
-        //parentPidManager.allocate_map(); //already called in construction
-        cout << "\n\nParent Pids:\n";
-
-        //Allocate Pids
-        for (int i = 0; i < 3; ++i)
-        {
-            int ppid = parentPidManager.allocate_pid();
-            cout << "Parent pid " << (i + 1) << ": " << ppid << endl;
-            parentPids.push_back(ppid);
-        }
-
-        // Release and Test to see if release Pids become available again
-        cout << "Releaseing Pids";
-        for (int i = 0; i < 2; ++i)
-        {
-            if (i == 1)
-            {
-                cout << "\nCheck if release Pids are available again:\n";
-            }
-            for (int element : parentPids)
-            {
-                parentPidManager.release_pid(element);
-            }
-        }
-
-        cout << "\nCheck to see if you can allocate same pid that was released\n";
-        int ppid = parentPidManager.allocate_pid();
-        auto it = find(parentPids.begin(), parentPids.end(), ppid);
-        if (it != parentPids.end())
-        {
-            cout << "\nPreviously allocated pid that was release was allocated again!";
-        }
-        else
-        {
-            cout << "error";
-        }
-        parentPidManager.release_pid(ppid);
         
-        
+        close(parentToChild[READ_END]);
+        close(childToParent[WRITE_END]);
+    
+        while (true)
+        {
+            // Read request from child
+            read(childToParent[READ_END], read_msg, BUFFER_SIZE);
+            printf("\nParent received request: %s", read_msg);
 
-        //Testing Area
-        // cout << "\nparentPids Vector:\n";
-        // for (int element : parentPids)
-        // {
-        //     cout << element << " ";
-        // }
-        // cout << endl;
+            // If child is done, break the loop
+            if (strcmp(read_msg, "Done") == 0)
+            {
+                cout << endl;
+                break;
+            }
+            else if (strcmp(read_msg, pid_msg) == 0)
+            {
+                // Allocate PID
+                int ppid = parentPidManager.allocate_pid();
+                cout << "\nParent created PID: " << ppid << endl;
+                parentPids.push_back(ppid);
 
+                // Send PID to child
+                string pid_str = to_string(ppid);
+                write(parentToChild[WRITE_END], pid_str.c_str(), pid_str.length() + 1);
+            }
+            else if (strcmp(read_msg, deallocate_pid) == 0)
+            {
+                // Deallocate the last allocated PID
+                if (!parentPids.empty())
+                {
+                    int ppid = parentPids.back();
+                    printf("\nParent received request to release PID: %d", ppid);
+                    parentPidManager.release_pid(ppid);
+                    cout << "Parent deallocated PID: " << ppid << endl << endl;
+                    parentPids.pop_back();
+                }
+            }
+        }
+        wait(NULL);
+        close(parentToChild[WRITE_END]);
+        close(childToParent[READ_END]);
 
     }
 

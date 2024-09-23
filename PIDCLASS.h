@@ -65,7 +65,7 @@ public:
                 //Mark that the pid is now being used
                 pidContainer.set(i);
                 int returnedPid = i + MIN_PID;
-                cout << returnedPid << " pid was allocated!";
+                cout << endl << returnedPid << " pid was allocated!";
                 return returnedPid;
             }
         }

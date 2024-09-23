@@ -68,6 +68,7 @@ int main(void)
     /* write to the pipe */
 
         write(fd[WRITE_END], write_msg, strlen(write_msg)+1);
+        sleep(5);
         write(fd[WRITE_END], write_msg2, strlen(write_msg2)+1);
 
 
@@ -87,9 +88,10 @@ int main(void)
     /* read from the pipe */
 
         read(fd[READ_END], read_msg, BUFFER_SIZE);
+        printf("read %s",read_msg);
         read(fd[READ_END], read_msg, BUFFER_SIZE);
         std::cout << "test";
-        printf("read %s",read_msg);
+        
         printf("read %s",read_msg);
 
     /* close the read end of the pipe */
